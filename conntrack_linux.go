@@ -5,8 +5,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/vishvananda/netlink/nl"
@@ -184,6 +186,10 @@ func (h *Handle) ConntrackDeleteFilters(table ConntrackTableType, family InetFam
 					break
 				}
 				errMsgs = append(errMsgs, fmt.Sprintf("failed to delete conntrack flow '%s': %s", flow.String(), err.Error()))
+				fmt.Println("####################################################### Netlink ConntrackDeleteFilters")
+				fmt.Println("error occurred", err, errors.Is(err, syscall.ENONET), errors.Is(err, fs.ErrNotExist), errors.Is(err, unix.ENONET))
+				fmt.Println("length", len(errMsgs))
+				fmt.Println("####################################################### Netlink ConntrackDeleteFilters")
 			}
 		}
 	}
