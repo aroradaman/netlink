@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net"
 	"time"
 
@@ -170,28 +169,25 @@ func (h *Handle) ConntrackDeleteFilters(table ConntrackTableType, family InetFam
 		finalErr = err
 	}
 
-	var totalFilterErrors int
 	var matched uint
+	req2 := h.newConntrackRequest(table, family, nl.IPCTNL_MSG_CT_DELETE, unix.NLM_F_ACK)
 	for _, dataRaw := range res {
 		flow := parseRawData(dataRaw)
 		for _, filter := range filters {
 			if match := filter.MatchConntrackFlow(flow); match {
-				req2 := h.newConntrackRequest(table, family, nl.IPCTNL_MSG_CT_DELETE, unix.NLM_F_ACK)
 				// skip the first 4 byte that are the netfilter header, the newConntrackRequest is adding it already
 				req2.AddRawData(dataRaw[4:])
-				if _, err = req2.Execute(unix.NETLINK_NETFILTER, 0); err == nil || errors.Is(err, fs.ErrNotExist) {
-					matched++
-					// flow is already deleted, no need to match on other filters and continue to the next flow.
-					break
-				} else {
-					totalFilterErrors++
-				}
+				matched++
 			}
 		}
 	}
-	if totalFilterErrors > 0 {
-		finalErr = errors.Join(finalErr, fmt.Errorf("failed to delete %d conntrack flows with %d filters", totalFilterErrors, len(filters)))
-	}
+
+	_, err = req2.Execute(unix.NETLINK_NETFILTER, 0)
+	fmt.Println(err)
+
+	//if totalFilterErrors > 0 {
+	//	finalErr = errors.Join(finalErr, fmt.Errorf("failed to delete %d conntrack flows with %d filters", totalFilterErrors, len(filters)))
+	//}
 	return matched, finalErr
 }
 
